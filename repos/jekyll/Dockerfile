@@ -1,6 +1,6 @@
-FROM <%= @meta.base_image %>
-LABEL maintainer "Jordon Bedwell <jordon@envygeeks.io>"
-COPY copy /
+FROM ruby:3.2.1-alpine3.17
+LABEL maintainer "Can Li <cli2@ebay.com>"
+COPY copy/all /
 
 #
 # EnvVars
@@ -21,10 +21,10 @@ ENV RUBYOPT=-W0
 #
 
 ENV JEKYLL_VAR_DIR=/var/jekyll
-ENV JEKYLL_DOCKER_TAG=<%= @meta.tag %>
-ENV JEKYLL_VERSION=<%= @meta.release?? @meta.release : @meta.tag %>
-ENV JEKYLL_DOCKER_COMMIT=<%= `git rev-parse --verify HEAD`.strip %>
-ENV JEKYLL_DOCKER_NAME=<%= @meta.name %>
+ENV JEKYLL_DOCKER_TAG=4.3.2
+ENV JEKYLL_VERSION=4.3.2
+ENV JEKYLL_DOCKER_COMMIT=fb892998d444b7b2e4074adeb032197f67853c0a
+ENV JEKYLL_DOCKER_NAME=jekyll
 ENV JEKYLL_DATA_DIR=/srv/jekyll
 ENV JEKYLL_BIN=/usr/jekyll/bin
 ENV JEKYLL_ENV=development
@@ -41,33 +41,14 @@ ENV PATH="$JEKYLL_BIN:$PATH"
 ENV LC_ALL=en_US.UTF-8
 ENV LANG=en_US.UTF-8
 ENV LANGUAGE=en_US
-
-#
-# EnvVars
-# User
-#
-
-<% if @meta.env? %>
-  ENV <%= @meta.env %>
-<% end %>
-
 #
 # EnvVars
 # Main
 #
 
-env VERBOSE=false
-env FORCE_POLLING=false
-env DRAFTS=false
-
-#
-# Packages
-# User
-#
-
-<% if @meta.packages? %>
-  RUN apk --no-cache add <%= @meta.packages %>
-<% end %>
+ENV VERBOSE=false
+ENV FORCE_POLLING=false
+ENV DRAFTS=false
 
 #
 # Packages
@@ -118,7 +99,6 @@ RUN apk --no-cache add \
 # Gems
 # Update
 #
-
 RUN echo "gem: --no-ri --no-rdoc" > ~/.gemrc
 RUN unset GEM_HOME && unset GEM_BIN && \
   yes | gem update --system
@@ -127,51 +107,36 @@ RUN unset GEM_HOME && unset GEM_BIN && \
 # Gems
 # Main
 #
-
 RUN unset GEM_HOME && unset GEM_BIN && yes | gem install --force bundler
-RUN gem install jekyll -v<%= @meta.release?? \
-  @meta.release : @meta.tag %> -- \
+RUN gem install jekyll -v4.3.2 --\
     --use-system-libraries
 
 #
 # Gems
 # User
 #
+RUN gem install html-proofer \
+    jekyll-reload \
+    jekyll-mentions \
+    jekyll-coffeescript \
+    jekyll-sass-converter  \
+    jekyll-commonmark  \
+    jekyll-paginate  \
+    jekyll-compose  \
+    jekyll-assets  \
+    RedCloth  \
+    kramdown  \
+    jemoji  \
+    jekyll-redirect-from  \
+    jekyll-sitemap  \
+    jekyll-feed  \
+    minima -- --use-system-libraries
 
-<% if @meta.gems? %>
-  # Stops slow Nokogiri!
-  RUN gem install <%=@meta.gems %> -- \
-    --use-system-libraries
-<% end %>
 
 RUN addgroup -Sg 1000 jekyll
 RUN adduser  -Su 1000 -G \
   jekyll jekyll
 
-#
-# Remove development packages on minimal.
-# And on pages.  Gems are unsupported.
-#
-
-<% if @meta.name == "minimal" || @meta.name == "pages" || @meta.tag == "pages" %>
-  RUN apk --no-cache del \
-    linux-headers \
-    openjdk8-jre \
-    zlib-dev \
-    build-base \
-    libxml2-dev \
-    libxslt-dev \
-    readline-dev \
-    imagemagick-dev\
-    libffi-dev \
-    ruby-dev \
-    yaml-dev \
-    zlib-dev \
-    libffi-dev \
-    vips-dev \
-    vips-tools \
-    cmake
-<% end %>
 
 RUN mkdir -p $JEKYLL_VAR_DIR
 RUN mkdir -p $JEKYLL_DATA_DIR
@@ -194,3 +159,8 @@ WORKDIR /srv/jekyll
 VOLUME  /srv/jekyll
 EXPOSE 35729
 EXPOSE 4000
+
+#update gem package
+RUN gem update
+RUN gem cleanup
+
